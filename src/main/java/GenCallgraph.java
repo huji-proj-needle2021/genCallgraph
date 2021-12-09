@@ -71,7 +71,7 @@ public class GenCallgraph {
                 int lastPercentageMilestone = -1;
                 System.out.println("Number of reachable methods is " + Scene.v().getReachableMethods().size());
                 System.out.println("Beginning to process call graph of size " + cgSize);
-                try (var writer = new GraphWriter()) {
+                try (var writer = new Neo4jGraphWriter()) {
                     for (Edge edge: cg) {
                         if (processEdge(edge)) {
                             writer.addEdge(edge);
@@ -83,6 +83,8 @@ public class GenCallgraph {
                             lastPercentageMilestone = percentage;
                         }
                     }
+                    System.out.println("Done creating function call graph, now creating class dependency graph");
+                    writer.createClassDependencyGraph();
                 } catch (Exception ex) {
                     ex.printStackTrace();
                 }
@@ -95,6 +97,5 @@ public class GenCallgraph {
         Scene.v().loadNecessaryClasses();
         System.out.println("Running packs");
         PackManager.v().runPacks();
-        System.out.println("Done");
     }
 }
