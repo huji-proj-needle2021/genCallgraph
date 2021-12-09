@@ -1,26 +1,22 @@
+import soot.PackManager;
+import soot.Scene;
+import soot.SceneTransformer;
+import soot.Transform;
+import soot.jimple.toolkits.callgraph.CallGraph;
+import soot.jimple.toolkits.callgraph.Edge;
+import soot.options.Options;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import soot.MethodOrMethodContext;
-import soot.PackManager;
-import soot.Scene;
-import soot.SceneTransformer;
-import soot.SootClass;
-import soot.SootMethod;
-import soot.Transform;
-import soot.jimple.toolkits.callgraph.*;
-import soot.options.CHAOptions;
-import soot.options.Options;
 
 
 public class GenCallgraph {
     static final String INPUT_FOLDER = "toAnalyze";
-    static final String INPUT_JAR = String.valueOf(Paths.get(INPUT_FOLDER, "jadx-gui-dev.jar").toAbsolutePath());
     static final List<String> INPUT_JARS;
     static final String MAIN_CLASS = "jadx.gui.JadxGUI";
 
@@ -51,7 +47,6 @@ public class GenCallgraph {
     static boolean processEdge(Edge edge) {
         var srcClass = edge.src().getDeclaringClass().getName();
         var tgtClass = edge.tgt().getDeclaringClass().getName();
-//        return true;
         return srcClass.startsWith("jadx") && tgtClass.startsWith("jadx");
     }
 
