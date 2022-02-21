@@ -1,3 +1,5 @@
+package needle.genCallGraph;
+
 import soot.PackManager;
 import soot.Scene;
 import soot.SceneTransformer;
@@ -7,57 +9,64 @@ import soot.jimple.toolkits.callgraph.Edge;
 import soot.options.Options;
 
 import java.io.IOException;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 
 public class GenCallgraph {
-    static final String INPUT_FOLDER = "toAnalyze";
-    static final List<String> INPUT_JARS;
-    static final String MAIN_CLASS = "jadx.gui.JadxGUI";
+    public final String inputFolder; // = "toAnalyze";
+    public final String outputFolder;
+    public final List<String> inputJars;
+    public final String mainClass; // = "jadx.gui.JadxGUI";
+    public final Predicate<Edge> edgePredicate;
 
-    static final List<String> EXCLUDES = List.of(
+    public final List<String> EXCLUDES = List.of(
             "java.*",
             "org.slf4j.*",
             "com.sun.*",
             "com.google.*"
     );
 
-    static {
-        List<String> tempInputJars;
-        try {
-            tempInputJars = Files.list(Paths.get(INPUT_FOLDER))
-                        .map(Path::toAbsolutePath)
-                        .filter(p -> p.getFileName().toString().startsWith("jadx"))
-                        .map(Path::toString)
-                        .collect(Collectors.toList());
-        } catch (IOException e) {
-            e.printStackTrace();
-            tempInputJars = null;
-            System.exit(1);
+    public GenCallgraph(String inputFolder,
+                        String outputFolder,
+                        Predicate<Path> jarFilter,
+                        Predicate<Edge> edgePredicate,
+                        String mainClass) throws IOException {
+        this.inputFolder = inputFolder;
+        this.outputFolder = outputFolder;
+        this.mainClass = mainClass;
+        this.inputJars = Files.list(Paths.get(this.inputFolder))
+                .map(Path::toAbsolutePath)
+                .filter(p -> jarFilter.test(p.getFileName()) && p.getFileName().toString().toLowerCase().endsWith(".jar"))
+                .map(Path::toString)
+                .collect(Collectors.toList());
+        if (this.inputJars.isEmpty()) {
+            throw new IOException("Couldn't find any .jar files matching predicate at " + inputFolder);
         }
-        INPUT_JARS = tempInputJars;
+        this.edgePredicate = edgePredicate;
+
     }
 
+//    protected boolean edgePredicate(Edge edge) {
+//        var srcClass = edge.src().getDeclaringClass().getName();
+//        var tgtClass = edge.tgt().getDeclaringClass().getName();
+//        return srcClass.startsWith("jadx") && tgtClass.startsWith("jadx");
+//    }
 
-    static boolean processEdge(Edge edge) {
-        var srcClass = edge.src().getDeclaringClass().getName();
-        var tgtClass = edge.tgt().getDeclaringClass().getName();
-        return srcClass.startsWith("jadx") && tgtClass.startsWith("jadx");
-    }
+    public void beginAnalysis() throws IOException {
 
-    public static void main(String[] args) {
-
-        Options.v().set_soot_classpath(INPUT_FOLDER);
+        Options.v().set_soot_classpath(inputFolder);
         Options.v().set_app(true);
         Options.v().set_whole_program(true);
         Options.v().set_prepend_classpath(true);
-        Options.v().set_process_dir(INPUT_JARS);
-        Options.v().set_main_class(MAIN_CLASS);
+        Options.v().set_process_dir(inputJars);
+        Options.v().set_main_class(mainClass);
         Options.v().set_exclude(EXCLUDES);
         Options.v().set_allow_phantom_refs(true);
         Options.v().set_no_bodies_for_excluded(true);
@@ -71,9 +80,10 @@ public class GenCallgraph {
                 int lastPercentageMilestone = -1;
                 System.out.println("Number of reachable methods is " + Scene.v().getReachableMethods().size());
                 System.out.println("Beginning to process call graph of size " + cgSize);
-                try (var writer = new Neo4jGraphWriter()) {
+                try (var writer = new JSONGraphWriter(outputFolder))
+                {
                     for (Edge edge: cg) {
-                        if (processEdge(edge)) {
+                        if (edgePredicate.test(edge)) {
                             writer.addEdge(edge);
                         }
                         ++processed;
@@ -83,8 +93,7 @@ public class GenCallgraph {
                             lastPercentageMilestone = percentage;
                         }
                     }
-                    System.out.println("Done creating function call graph, now creating class dependency graph");
-                    writer.createClassDependencyGraph();
+                    System.out.println("Done creating function call graph");
                 } catch (Exception ex) {
                     ex.printStackTrace();
                 }
@@ -93,7 +102,7 @@ public class GenCallgraph {
         }));
 
 
-        System.out.println("Loading necessary classes, input jars are: " + INPUT_JARS);
+        System.out.println("Loading necessary classes, input jars are: " + inputJars);
         Scene.v().loadNecessaryClasses();
         System.out.println("Running packs");
         PackManager.v().runPacks();
