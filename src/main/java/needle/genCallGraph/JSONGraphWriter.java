@@ -7,8 +7,7 @@ import com.fasterxml.jackson.core.JsonGenerator;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.nio.file.*;
 import java.util.HashSet;
 
 
@@ -28,15 +27,15 @@ public class JSONGraphWriter implements AutoCloseable {
 
     public JSONGraphWriter(String outputFolder) throws IOException {
         File folderF = new File(outputFolder);
-        if (!folderF.mkdirs()) {
+        if (!folderF.exists() && !folderF.mkdirs()) {
             throw new IOException("Couldn't create output folder at " + outputFolder);
         }
 
         var edgeFilepath = Paths.get(outputFolder, IDENTIFIER_EDGELIST_FILE);
         var mapFilepath = Paths.get(outputFolder, IDENTIFIER_METHOD_MAPPING);
 
-        edgeFile = Files.newBufferedWriter(edgeFilepath, StandardCharsets.UTF_8);
-        mappingFile = Files.newBufferedWriter(mapFilepath, StandardCharsets.UTF_8);
+        edgeFile = Files.newBufferedWriter(edgeFilepath, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        mappingFile = Files.newBufferedWriter(mapFilepath, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
 
         var fac = new JsonFactory();
         edgeGen = fac.createGenerator(edgeFile);
@@ -59,12 +58,15 @@ public class JSONGraphWriter implements AutoCloseable {
         edgeFile.close();
         mappingFile.close();
     }
+    private static String methodToIdentifier(SootMethod method) {
+        return  method.getDeclaringClass().getName() + "." + method.getName();
+    }
 
     private void addMethod(SootMethod method) throws IOException {
         if (seenIdentifiers.contains(method.getSignature())) {
             return;
         }
-        mapGen.writeObjectFieldStart(method.getSignature());
+        mapGen.writeObjectFieldStart(methodToIdentifier(method));
         mapGen.writeStringField("method", method.getName());
         mapGen.writeStringField("class", method.getDeclaringClass().getShortName());
         mapGen.writeStringField("package", method.getDeclaringClass().getPackageName());
@@ -78,8 +80,9 @@ public class JSONGraphWriter implements AutoCloseable {
         addMethod(tgt);
 
         edgeGen.writeStartObject();
-        edgeGen.writeStringField("src", src.getSignature());
-        edgeGen.writeStringField("tgt", tgt.getSignature());
+
+        edgeGen.writeStringField("src", methodToIdentifier(src));
+        edgeGen.writeStringField("tgt", methodToIdentifier(tgt));
         edgeGen.writeStringField("kind", edge.kind().name());
         edgeGen.writeEndObject();
     }
