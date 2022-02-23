@@ -1,9 +1,6 @@
 package needle.genCallGraph;
 
-import soot.PackManager;
-import soot.Scene;
-import soot.SceneTransformer;
-import soot.Transform;
+import soot.*;
 import soot.jimple.toolkits.callgraph.CallGraph;
 import soot.jimple.toolkits.callgraph.Edge;
 import soot.options.Options;
@@ -53,11 +50,9 @@ public class GenCallgraph {
 
     }
 
-//    protected boolean edgePredicate(Edge edge) {
-//        var srcClass = edge.src().getDeclaringClass().getName();
-//        var tgtClass = edge.tgt().getDeclaringClass().getName();
-//        return srcClass.startsWith("jadx") && tgtClass.startsWith("jadx");
-//    }
+    public static String methodToIdentifier(SootMethod method) {
+        return  method.getDeclaringClass().getName() + "." + method.getName();
+    }
 
     public void beginAnalysis() throws IOException {
 

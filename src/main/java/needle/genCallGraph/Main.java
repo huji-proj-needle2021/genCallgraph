@@ -66,8 +66,8 @@ public class Main {
             }
             boolean sourceOk = false, tgtOk = false;
             for (var part: args.edgePredicate) {
-                var sourceIdent = edge.src().getSignature();
-                var tgtIdent = edge.src().getSignature();
+                var sourceIdent = GenCallgraph.methodToIdentifier(edge.src());
+                var tgtIdent = GenCallgraph.methodToIdentifier(edge.tgt());
                 if (sourceIdent.contains(part)) {
                     sourceOk = true;
                 }

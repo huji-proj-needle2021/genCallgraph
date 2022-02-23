@@ -58,15 +58,12 @@ public class JSONGraphWriter implements AutoCloseable {
         edgeFile.close();
         mappingFile.close();
     }
-    private static String methodToIdentifier(SootMethod method) {
-        return  method.getDeclaringClass().getName() + "." + method.getName();
-    }
 
     private void addMethod(SootMethod method) throws IOException {
         if (seenIdentifiers.contains(method.getSignature())) {
             return;
         }
-        mapGen.writeObjectFieldStart(methodToIdentifier(method));
+        mapGen.writeObjectFieldStart(GenCallgraph.methodToIdentifier(method));
         mapGen.writeStringField("method", method.getName());
         mapGen.writeStringField("class", method.getDeclaringClass().getShortName());
         mapGen.writeStringField("package", method.getDeclaringClass().getPackageName());
@@ -81,8 +78,8 @@ public class JSONGraphWriter implements AutoCloseable {
 
         edgeGen.writeStartObject();
 
-        edgeGen.writeStringField("src", methodToIdentifier(src));
-        edgeGen.writeStringField("tgt", methodToIdentifier(tgt));
+        edgeGen.writeStringField("src", GenCallgraph.methodToIdentifier(src));
+        edgeGen.writeStringField("tgt", GenCallgraph.methodToIdentifier(tgt));
         edgeGen.writeStringField("kind", edge.kind().name());
         edgeGen.writeEndObject();
     }
